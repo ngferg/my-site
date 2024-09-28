@@ -35,10 +35,16 @@ jobs:
       - name: move index.html
         run: cp $GITHUB_WORKSPACE/index.html $GITHUB_WORKSPACE/build/index.html
 
-      - name: aws set creds
+      - name: aws set region
         run: aws configure set region us-east-2
+
+      - name: aws set access key
         run: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY }}
+
+      - name: aws set seceret access key
         run: aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      
+      - name: aws verify identity
         run: aws sts get-caller-identity
 
       - name: aws s3 clean
