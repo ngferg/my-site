@@ -48,7 +48,7 @@ jobs:
         run: aws sts get-caller-identity
 
       - name: aws s3 clean
-        run: aws s3 rm s3://ngferg.net/* --recursive
+        run: aws s3 rm s3://ngferg.net --recursive
 
       - name: aws s3 upload
         run: aws s3 cp $GITHUB_WORKSPACE/build s3://ngferg.net --recursive
