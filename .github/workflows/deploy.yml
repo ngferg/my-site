@@ -33,7 +33,7 @@ jobs:
         run: mkdir $GITHUB_WORKSPACE/build
 
       - name: move index.html
-        run: cp $GITHUB_WORKSPACE/index.html $GITHUB_WORKSPACE/build/index.html
+        run: cp $GITHUB_WORKSPACE/src/ $GITHUB_WORKSPACE/build/
 
       - name: aws set region
         run: aws configure set region us-east-2
