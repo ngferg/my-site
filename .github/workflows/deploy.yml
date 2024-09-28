@@ -36,10 +36,10 @@ jobs:
         run: cp $GITHUB_WORKSPACE/index.html $GITHUB_WORKSPACE/build/index.html
 
       - name: aws set creds
-        - run: aws configure set region us-east-2
-        - run: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY }}
-        - run: aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        - run: aws sts get-caller-identity
+        run: aws configure set region us-east-2
+        run: aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY }}
+        run: aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        run: aws sts get-caller-identity
 
       - name: aws s3 clean
         run: aws s3 delete-objects --bucket s3://ngferg.net
