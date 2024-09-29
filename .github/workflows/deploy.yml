@@ -28,7 +28,7 @@ jobs:
         run: aws --version
 
       - name: set up build folder
-        run: mkdir $GITHUB_WORKSPACE/build
+        run: mkdir $GITHUB_WORKSPACE/target
 
       - name: build target directory
         run: cp $GITHUB_WORKSPACE/src/ $GITHUB_WORKSPACE/target/ -r
