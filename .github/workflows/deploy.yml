@@ -41,9 +41,6 @@ jobs:
 
       - name: aws set seceret access key
         run: aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      
-      - name: aws verify identity
-        run: aws sts get-caller-identity
 
       - name: aws s3 clean
         run: aws s3 rm s3://ngferg.net --recursive
