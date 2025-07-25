@@ -4,3 +4,9 @@ void function(script) {
         script.outerHTML = content;
     });
 }(document.currentScript);
+
+document.addEventListener('keydown', function(event) {
+    const pressedKey = event.key;
+    console.log("Key pressed:", pressedKey);
+}
+
