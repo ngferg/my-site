@@ -8,5 +8,5 @@ void function(script) {
 document.addEventListener('keydown', function(event) {
     const pressedKey = event.key;
     console.log("Key pressed:", pressedKey);
-}
+});
 
