@@ -3,17 +3,23 @@
       <a class="navbar-brand" href="http://ngferg.net">ngferg.net</a>
     </div>
     <ul class="navbar-nav">
+	<script>
+            document.addEventListener('keydown', function(event) {
+               const pressedKey = event.key;
+               console.log("Key pressed:", pressedKey);
+            }
+	</script>
         <li class="nav-item">
-            <a class="nav-link" href="http://ngferg.net">Home</a>
+            <a class="nav-link" href="http://ngferg.net" id="home-link">Home</a>
         </li>
         <li>
-            <a class="nav-link" href="http://ngferg.net/about.html">About</a>
+            <a class="nav-link" href="http://ngferg.net/about.html" id="about-link">About</a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="https://www.linkedin.com/in/nicholaus-ferguson-76b59785/"><img class="nav-image" src="./img/linkedin.png" alt="linked in"/></a>
+            <a class="nav-link" href="https://www.linkedin.com/in/nicholaus-ferguson-76b59785/" id="linked-in-link"><img class="nav-image" src="./img/linkedin.png" alt="linked in"/></a>
         </li>
         <li class="nav-item">
-            <a class="nav-link" href="https://github.com/ngferg"><img class="nav-image" src="./img/github-mark-white.svg" alt="github"/></a>
+            <a class="nav-link" href="https://github.com/ngferg" id="github-link"><img class="nav-image" src="./img/github-mark-white.svg" alt="github"/></a>
         </li>
     </ul>
 </nav>
