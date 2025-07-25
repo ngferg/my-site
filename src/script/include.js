@@ -16,6 +16,12 @@ document.addEventListener('keydown', function(event) {
         case 'a':
             document.getElementById('about-link').click();
             break;
+        case 'l':
+            document.getElementById('linked-in-link').click();
+            break;
+        case 'g':
+            document.getElementById('github-link').click();
+            break;
     }
 });
 
