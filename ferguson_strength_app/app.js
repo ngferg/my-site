@@ -1,0 +1,107 @@
+'use strict';
+/* LiftLog: private/offline-first workout journal. No external services or dependencies. */
+const STORAGE_KEY='ferguson_liftlog_v1';
+const PRESET=[
+  {id:'naut-legpress',name:'Leg Press',brand:'Nautilus',group:'Lower body',reps:12},
+  {id:'naut-legext',name:'Leg Extension',brand:'Nautilus',group:'Lower body',reps:12},
+  {id:'naut-legcurl',name:'Leg Curl',brand:'Nautilus',group:'Lower body',reps:12},
+  {id:'naut-adductor',name:'Hip Adductor',brand:'Nautilus',group:'Lower body',reps:15},
+  {id:'naut-abductor',name:'Hip Abductor',brand:'Nautilus',group:'Lower body',reps:15},
+  {id:'naut-inclinerow',name:'Inclined Row',brand:'Nautilus',group:'Upper body',reps:12},
+  {id:'naut-bicep',name:'Bicep Curl',brand:'Nautilus',group:'Upper body',reps:12},
+  {id:'naut-tricep',name:'Tricep Extension',brand:'Nautilus',group:'Upper body',reps:12},
+  {id:'naut-chest',name:'Chest Press',brand:'Nautilus',group:'Upper body',reps:12},
+  {id:'naut-crunch',name:'Abdominal Crunch',brand:'Nautilus',group:'Core',reps:15},
+  {id:'hoist-lat',name:'Lat Pull Down',brand:'Hoist',group:'Upper body',reps:12},
+  {id:'hoist-row',name:'Seated Row',brand:'Hoist',group:'Upper body',reps:12},
+];
+const GROUPS=['Lower body','Upper body','Core'];
+function defaults(){return {version:1,unit:'lb',machines:PRESET.map(m=>({...m})),logs:[]};}
+function load(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaults();const x=JSON.parse(raw);if(!Array.isArray(x.logs)||!Array.isArray(x.machines))return defaults();return {...defaults(),...x};}catch{return defaults();}}
+let db=load(), editMachineId=null, editDate=null;
+const $=(id)=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const localDate=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+const fmtDate=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d).toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'});};
+const asNumber=v=>Number.isFinite(Number(v))?Number(v):0;
+const round=(v,n=1)=>Math.round((v+Number.EPSILON)*10**n)/10**n;
+const weightDisplay=lb=>db.unit==='kg'?round(lb/2.20462262,1):round(lb,1);
+const weightStore=value=>db.unit==='kg'?round(value*2.20462262,3):round(value,3);
+const formatWeight=lb=>`${weightDisplay(lb).toLocaleString(undefined,{maximumFractionDigits:1})} ${db.unit}`;
+const fmtInt=n=>Math.round(n).toLocaleString();
+const getMachine=id=>db.machines.find(m=>m.id===id);
+const records=id=>db.logs.filter(l=>l.machineId===id).sort((a,b)=>a.date.localeCompare(b.date));
+const latest=id=>records(id).at(-1)||null;
+const best=l=>Math.max(...l.sets.map(s=>s.weight),0);
+const volume=l=>l.sets.reduce((total,s)=>total+s.weight*s.reps,0);
+const allVolume=logs=>logs.reduce((total,l)=>total+volume(l),0);
+const todayEntries=date=>db.logs.filter(l=>l.date===date);
+const recordFor=(id,date)=>db.logs.find(l=>l.machineId===id&&l.date===date);
+const dateFromDaysAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;};
+function persist(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(db));return true}catch(e){alert('Unable to save to this device. Please export a backup or free up storage.');return false}}
+function toast(message){const el=$('toast');el.textContent=message;el.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove('show'),2400);}
+function init(){
+  $('workoutDate').value=localDate();
+  document.querySelectorAll('.navbtn').forEach(btn=>btn.addEventListener('click',()=>showPage(btn.dataset.page)));
+  $('workoutDate').addEventListener('change',renderToday);
+  $('closeModal').addEventListener('click',closeModal);
+  $('modal').addEventListener('click',ev=>{if(ev.target===$('modal'))closeModal();});
+  document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeModal();});
+  $('progressMachine').addEventListener('change',renderChart);
+  ['exportCsvTop','exportCsv'].forEach(id=>$(id).addEventListener('click',exportCSV));
+  ['exportJsonTop','exportJson'].forEach(id=>$(id).addEventListener('click',exportBackup));
+  $('importJson').addEventListener('change',importBackup);
+  $('addMachine').addEventListener('click',addMachine);
+  $('clearData').addEventListener('click',clearHistory);
+  document.querySelectorAll('[data-unit]').forEach(btn=>btn.addEventListener('click',()=>changeUnit(btn.dataset.unit)));
+  $('installNote').hidden=!(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true);
+  renderAll();
+  if('serviceWorker' in navigator && location.protocol==='https:'){navigator.serviceWorker.register('./service-worker.js').catch(()=>{});}
+}
+function showPage(page){document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active',el.id===page));document.querySelectorAll('.navbtn').forEach(btn=>{const a=btn.dataset.page===page;btn.classList.toggle('active',a);if(a)btn.setAttribute('aria-current','page');else btn.removeAttribute('aria-current');});if(page==='progress')renderProgress();if(page==='history')renderHistory();if(page==='settings')renderSettings();window.scrollTo({top:0,behavior:'instant'});}
+function renderAll(){renderToday();renderProgress();renderHistory();renderSettings();}
+function renderToday(){const date=$('workoutDate').value||localDate(), day=todayEntries(date);$('topCount').textContent=`${db.machines.length} machines`;$('todayMachines').innerHTML=`${day.length}<span style="opacity:.6">/${db.machines.length}</span>`;$('todaySets').textContent=fmtInt(day.reduce((n,l)=>n+l.sets.length,0));$('todayVolume').textContent=fmtInt(db.unit==='kg'?allVolume(day)/2.20462262:allVolume(day));
+ let html='';for(const group of GROUPS){const machines=db.machines.filter(m=>m.group===group);if(!machines.length)continue;html+=`<div class="sectionhead"><h3>${esc(group)}</h3><small>${machines.length} machines</small></div><div class="machines">`;
+ for(const m of machines){const done=recordFor(m.id,date), past=records(m.id).filter(l=>l.date<date).at(-1)||latest(m.id);const sub=done?`${done.sets.length} sets · ${formatWeight(best(done))} max`:past?`Last: ${formatWeight(best(past))} · ${fmtDate(past.date)}`:'No previous workout';html+=`<button class="machine ${done?'isdone':''}" data-open-machine="${esc(m.id)}"><div class="machinehead"><span class="chip">${esc(m.brand)}</span>${done?'<span class="tick">✓</span>':'<span class="tick" style="opacity:.35">＋</span>'}</div><div class="machinename">${esc(m.name)}</div><div class="machinelast">${esc(sub)}</div></button>`;}
+ html+='</div>';} $('machineGroups').innerHTML=html;document.querySelectorAll('[data-open-machine]').forEach(b=>b.addEventListener('click',()=>openExercise(b.dataset.openMachine,date)));
+}
+function openExercise(id,date){const m=getMachine(id);if(!m)return;editMachineId=id;editDate=date;const current=recordFor(id,date),past=records(id).filter(l=>l.date<date).at(-1)||null;
+ $('modalBrand').textContent=m.brand+' · '+m.group;$('modalTitle').textContent=m.name;$('modalSub').textContent=fmtDate(date);$('modal').classList.add('open');document.body.style.overflow='hidden';
+ const pre=current?current.sets:past?past.sets:Array.from({length:3},()=>({weight:null,reps:m.reps}));
+ $('modalContent').innerHTML=`
+ ${past?`<div class="prevbox">Previous: <strong>${esc(fmtDate(past.date))}</strong> · ${past.sets.length} sets · top set <strong>${esc(formatWeight(best(past)))}</strong><div style="margin-top:5px;color:#aac4d7">${past.sets.map(s=>`${formatWeight(s.weight)} × ${s.reps}`).join(' · ')}</div></div>`:'<div class="prevbox">Your first recorded workout on this machine. Enter the weight and reps for each completed set.</div>'}
+ <div class="setshead"><div>Set</div><div>Weight (${db.unit})</div><div>Reps</div><div></div></div>
+ <div id="setRows"></div>
+ <div class="subcontrol"><button id="addSet" class="btn alt small">+ Add set</button><button id="copySet" class="btn alt small">Copy last set</button></div>
+ <div class="formgrid"><div><label class="field" for="sessionEffort">Effort (optional)</label><select id="sessionEffort" class="input"><option value="">Not recorded</option>${[5,6,7,8,9,10].map(x=>`<option value="${x}" ${Number(current?.effort)===x?'selected':''}>${x}/10</option>`).join('')}</select></div><div><label class="field" for="shoulderPain">Shoulder discomfort</label><select id="shoulderPain" class="input"><option value="">Not recorded</option>${Array.from({length:11},(_,x)=>`<option value="${x}" ${current?.pain===x?'selected':''}>${x}/10</option>`).join('')}</select></div></div>
+ <div class="mt16"><label class="field" for="workoutNotes">Notes (optional)</label><textarea id="workoutNotes" class="input" rows="2" placeholder="Technique, seat setting, range of motion, pain...">${esc(current?.notes||'')}</textarea></div>
+ <div class="footactions"><button id="saveExercise" class="btn">Save exercise</button>${current?'<button id="deleteExercise" class="btn warn">Delete</button>':''}</div>`;
+ const sets=pre.map(s=>({...s}));function drawSets(){const wrap=$('setRows');wrap.innerHTML=sets.map((s,i)=>`<div class="setrow"><span class="setno">${i+1}</span><input class="input" type="number" min="0" step="any" inputmode="decimal" data-set="${i}" data-type="weight" placeholder="0" value="${s.weight==null?'':esc(weightDisplay(s.weight))}" aria-label="Set ${i+1} weight"/><input class="input" type="number" min="1" max="1000" step="1" inputmode="numeric" data-set="${i}" data-type="reps" value="${s.reps??''}" aria-label="Set ${i+1} reps"/><button class="remove" data-remove="${i}" aria-label="Remove set ${i+1}">×</button></div>`).join('');wrap.querySelectorAll('[data-set]').forEach(input=>input.addEventListener('input',()=>{const i=+input.dataset.set;if(input.dataset.type==='weight')sets[i].weight=input.value===''?null:weightStore(Number(input.value));else sets[i].reps=input.value===''?null:+input.value;}));wrap.querySelectorAll('[data-remove]').forEach(btn=>btn.addEventListener('click',()=>{if(sets.length===1){toast('Keep at least one set');return;}sets.splice(+btn.dataset.remove,1);drawSets();}));}
+ drawSets();$('addSet').addEventListener('click',()=>{sets.push({weight:null,reps:sets.at(-1)?.reps||m.reps});drawSets();});$('copySet').addEventListener('click',()=>{sets.push({...sets.at(-1)});drawSets();});
+ $('saveExercise').addEventListener('click',()=>{const cleaned=sets.filter(s=>s.weight!==null&&Number.isFinite(s.weight)&&s.weight>0&&Number.isInteger(+s.reps)&&s.reps>0&&s.reps<=1000).map(s=>({weight:round(+s.weight,3),reps:+s.reps}));if(cleaned.length===0){alert('Enter a positive weight and number of repetitions for at least one completed set.');return;}if(cleaned.length!==sets.length&&!confirm('Some sets are incomplete or invalid. Save only the complete sets?'))return;
+  const pain=$('shoulderPain').value===''?null:+$('shoulderPain').value;const effort=$('sessionEffort').value===''?null:+$('sessionEffort').value; const payload={id:current?.id||`log-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,date,machineId:id,sets:cleaned,pain,effort,notes:$('workoutNotes').value.trim().slice(0,1000),updatedAt:new Date().toISOString()};if(current){db.logs=db.logs.map(x=>x.id===current.id?payload:x);}else db.logs.push(payload);if(!persist())return;closeModal();renderAll();toast('Exercise saved ✓');});
+ if(current)$('deleteExercise').addEventListener('click',()=>{if(confirm(`Delete ${m.name} from ${fmtDate(date)}?`)){db.logs=db.logs.filter(x=>x.id!==current.id);persist();closeModal();renderAll();toast('Exercise deleted');}});
+}
+function closeModal(){const el=$('modal');el.classList.remove('open');document.body.style.overflow='';editMachineId=null;editDate=null;}
+function renderProgress(){const dates=new Set(db.logs.map(l=>l.date)),recent=[...dates].filter(d=>d>=dateFromDaysAgo(29));$('totalDays').textContent=dates.size;$('totalSets').textContent=fmtInt(db.logs.reduce((sum,l)=>sum+l.sets.length,0));$('days30').textContent=recent.length;$('prCount').textContent=new Set(db.logs.map(l=>l.machineId)).size;
+ const picker=$('progressMachine');const prior=picker.value;picker.innerHTML=db.machines.map(m=>`<option value="${esc(m.id)}">${esc(m.brand)} · ${esc(m.name)}</option>`).join('');const preferred=db.machines.find(m=>m.id===prior)?.id||db.machines.find(m=>records(m.id).length)?.id||db.machines[0]?.id;if(preferred)picker.value=preferred;renderChart();
+ let html='';for(const m of db.machines){const r=records(m.id);if(!r.length)continue;const first=r[0],last=r.at(-1),a=best(first),b=best(last),delta=a?round((b-a)/a*100,1):null;const sign=delta>0?'+':'';html+=`<div class="trenditem"><div><b>${esc(m.name)}</b><small>${esc(m.brand)} · ${r.length} ${r.length===1?'session':'sessions'} · latest ${esc(formatWeight(b))}</small></div><div class="delta ${delta<0?'down':''}">${r.length>1&&delta!==null?`${sign}${delta}%`:'Baseline'}</div></div>`;}
+ $('machineTrends').innerHTML=html||'<div class="emptystate"><b>No progress data yet</b>Log a workout to see performance trends for each machine.</div>';
+}
+function renderChart(){const id=$('progressMachine').value,el=$('trendChart');if(!id){el.innerHTML='';return}let rr=records(id).filter(l=>l.sets.length).slice(-10);if(!rr.length){el.innerHTML='<div class="chartempty">Log your first workout on this machine to start a trend.</div>';return}let vals=rr.map(best),mn=Math.min(...vals),mx=Math.max(...vals),pad=Math.max(5,(mx-mn)*.3);let lo=Math.max(0,mn-pad),hi=mx+pad;if(hi===lo)hi=lo+20;const W=560,H=205,L=43,R=14,T=16,B=34,X=i=>L+(W-L-R)*(rr.length===1?.5:i/(rr.length-1)),Y=v=>T+(H-T-B)*(1-(v-lo)/(hi-lo)),points=vals.map((v,i)=>`${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' '),first=rr[0],last=rr.at(-1);let horiz='';for(let i=0;i<=3;i++){let v=lo+(hi-lo)*(i/3);let y=Y(v);horiz+=`<line x1="${L}" y1="${y}" x2="${W-R}" y2="${y}" stroke="#456075" stroke-dasharray="3 5" opacity=".6"/><text x="${L-7}" y="${y+4}" text-anchor="end" fill="#b5cbda" font-size="11">${Math.round(weightDisplay(v))}</text>`;}
+ const labels=rr.length===1?[0]:[0,Math.floor((rr.length-1)/2),rr.length-1].filter((x,i,a)=>a.indexOf(x)===i);
+ const labelSVG=labels.map(i=>`<text x="${X(i)}" y="${H-8}" text-anchor="middle" fill="#a8bfd0" font-size="11">${esc(new Date(rr[i].date+'T12:00:00').toLocaleDateString(undefined,{month:'short',day:'numeric'}))}</text>`).join('');
+ el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" aria-label="Heaviest weight per workout chart" role="img"><defs><linearGradient id="aFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fe0b4" stop-opacity=".3"/><stop offset="1" stop-color="#7fe0b4" stop-opacity="0"/></linearGradient></defs>${horiz}${rr.length>1?`<polygon points="${L},${H-B} ${points} ${X(rr.length-1)},${H-B}" fill="url(#aFill)"/><polyline points="${points}" stroke="#7fe0b4" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round"/>`:''}${vals.map((v,i)=>`<circle cx="${X(i)}" cy="${Y(v)}" r="5" fill="#7fe0b4" stroke="#113527" stroke-width="2"><title>${esc(fmtDate(rr[i].date))}: ${esc(formatWeight(v))}</title></circle>`).join('')}${labelSVG}<text x="${W-R}" y="12" fill="#bfd2de" font-size="10" text-anchor="end">${esc(db.unit)}</text></svg>`;
+}
+function renderHistory(){const list=$('historyList');if(!db.logs.length){list.innerHTML='<div class="emptystate"><b>No workouts yet</b>Your completed sets will appear here automatically.</div>';return}const dates=[...new Set(db.logs.map(x=>x.date))].sort((a,b)=>b.localeCompare(a));let html='';for(const d of dates){const logs=todayEntries(d).sort((a,b)=>{const ma=getMachine(a.machineId),mb=getMachine(b.machineId);return (ma?.group||'').localeCompare(mb?.group||'')});html+=`<div class="daytitle">${esc(fmtDate(d))} <span class="pilldate">${logs.length} machines · ${logs.reduce((a,l)=>a+l.sets.length,0)} sets</span></div>`;for(const l of logs){const m=getMachine(l.machineId);html+=`<div class="historycard"><div class="row between"><div><h4>${esc(m?.name||'Removed machine')}</h4><span class="historymeta">${esc(m?.brand||'Unknown')} · ${esc(m?.group||'')}</span></div><button data-edit-log="${esc(l.machineId)}" data-edit-date="${esc(d)}">Edit</button></div><div class="lines">${l.sets.map((s,i)=>`<b>${i+1}.</b> ${esc(formatWeight(s.weight))} × ${s.reps} reps`).join(' &nbsp; · &nbsp; ')}</div>${l.notes?`<div class="historymeta mt10">${esc(l.notes)}</div>`:''}${l.pain!=null?`<div class="historymeta mt10">Shoulder discomfort: ${l.pain}/10</div>`:''}</div>`;}}list.innerHTML=html;list.querySelectorAll('[data-edit-log]').forEach(btn=>btn.addEventListener('click',()=>openExercise(btn.dataset.editLog,btn.dataset.editDate)));}
+function renderSettings(){document.querySelectorAll('[data-unit]').forEach(btn=>btn.classList.toggle('active',btn.dataset.unit===db.unit));$('adminMachines').innerHTML=db.machines.map(m=>`<div class="machineadmin"><div><b>${esc(m.name)}</b><br><small>${esc(m.brand)} · ${esc(m.group)}</small></div><button class="btn alt small" data-rename="${esc(m.id)}">Rename</button></div>`).join('');document.querySelectorAll('[data-rename]').forEach(btn=>btn.addEventListener('click',()=>renameMachine(btn.dataset.rename)));}
+function renameMachine(id){const m=getMachine(id);if(!m)return;const name=prompt('New machine name:',m.name);if(name===null)return;const value=name.trim().slice(0,64);if(!value)return alert('Please enter a name.');m.name=value;persist();renderAll();toast('Machine renamed');}
+function addMachine(){const name=prompt('What is the machine called?');if(name===null)return;const clean=name.trim().slice(0,64);if(!clean)return;let brand=prompt('Brand (Nautilus, Hoist, or other):','Nautilus');if(brand===null)return;brand=brand.trim().slice(0,40)||'Other';let group=prompt('Body group: Lower body, Upper body, or Core','Upper body');if(group===null)return;group=GROUPS.find(g=>g.toLowerCase()===group.trim().toLowerCase())||'Upper body';db.machines.push({id:'custom-'+Date.now(),name:clean,brand,group,reps:12});persist();renderAll();toast('Machine added');}
+function changeUnit(unit){if(unit===db.unit)return;db.unit=unit;persist();renderAll();toast('Units changed to '+unit);}
+function download(name,contents,type){const blob=new Blob([contents],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);}
+function exportBackup(){const out={app:'LiftLog',backupVersion:1,exportedAt:new Date().toISOString(),data:db};download(`LiftLog-backup-${localDate()}.json`,JSON.stringify(out,null,2),'application/json');toast('Backup downloaded');}
+function csvCell(s){return '"'+String(s??'').replace(/"/g,'""')+'"';}
+function exportCSV(){const rows=[['Date','Brand','Machine','Group','Set number','Weight (lb)','Reps','Volume (lb × reps)','Effort (out of 10)','Shoulder discomfort (out of 10)','Notes']];for(const l of [...db.logs].sort((a,b)=>a.date.localeCompare(b.date))){const m=getMachine(l.machineId);l.sets.forEach((s,i)=>rows.push([l.date,m?.brand||'',m?.name||l.machineId,m?.group||'',i+1,round(s.weight,3),s.reps,round(s.weight*s.reps,2),l.effort??'',l.pain??'',l.notes||'']));}download(`LiftLog-workouts-${localDate()}.csv`,rows.map(r=>r.map(csvCell).join(',')).join('\r\n'),'text/csv;charset=utf-8');toast('CSV exported');}
+async function importBackup(event){const file=event.target.files[0];event.target.value='';if(!file)return;try{if(file.size>10_000_000)throw Error('File is too large.');const parsed=JSON.parse(await file.text()),data=parsed.data;if(parsed.app!=='LiftLog'||!data||!Array.isArray(data.machines)||!Array.isArray(data.logs))throw Error('This is not a valid LiftLog backup.');if(data.logs.length>50000)throw Error('Backup contains too many entries.');if(!data.machines.every(m=>typeof m.id==='string'&&typeof m.name==='string'&&typeof m.brand==='string'&&GROUPS.includes(m.group)))throw Error('Backup machine list is invalid.');if(!data.logs.every(l=>typeof l.date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(l.date)&&typeof l.machineId==='string'&&Array.isArray(l.sets)&&l.sets.every(s=>Number.isFinite(s.weight)&&s.weight>0&&Number.isInteger(s.reps)&&s.reps>0)))throw Error('Backup workout entries are invalid.');if(!confirm(`Restore ${data.logs.length} exercise records? This will replace workouts currently saved on this device. Download a backup of your current data first if needed.`))return;db={...defaults(),...data,unit:data.unit==='kg'?'kg':'lb'};persist();renderAll();toast('Backup restored');}catch(e){alert('Could not restore backup: '+e.message);}}
+function clearHistory(){if(!db.logs.length){toast('No workout entries to erase');return;}if(!confirm('Erase all recorded workouts from this device? This cannot be undone without a backup.'))return;if(!confirm('Are you sure? Your machine list will remain, but all logged sets will be removed.'))return;db.logs=[];persist();renderAll();toast('Workout history erased');}
+init();
