@@ -9,10 +9,11 @@ Hoist: Lat Pull Down, Seated Row.
 WHAT IT DOES
 - Large touch-friendly machine buttons.
 - Records weight and repetitions for every completed working set.
+- Logs cardio activity, duration, and optional resistance.
 - Suggests your prior sets the next time you use the same machine.
 - Saves one editable exercise entry per machine per date.
 - Records optional effort, shoulder discomfort, and notes.
-- Shows trends by machine, workout history, and session totals.
+- Shows strength trends by machine and combined strength/cardio workout history.
 - Lets you export CSV or save/restore a JSON backup.
 - Works offline after installation from an HTTPS website.
 - No account, password, analytics, or subscription required.
@@ -39,7 +40,8 @@ IMPORTANT DATA NOTES
 - Settings > Restore backup restores those workouts on another device,
   but REPLACES existing entries on that device.
 - The CSV file is for use in Excel, Numbers, or other software. CSV
-  weight and volume columns use pounds regardless of the display units.
+  weight and volume columns use pounds regardless of the display units;
+  cardio records include duration in minutes and optional resistance.
 - The app does not automatically integrate with Apple Health.
 
 TECHNICAL
