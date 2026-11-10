@@ -18,18 +18,6 @@ WHAT IT DOES
 - Works offline after installation from an HTTPS website.
 - No account, password, analytics, or subscription required.
 
-HOW TO INSTALL ON YOUR IPHONE
-1. On a Mac or computer, extract the LiftLog_iPhone_App.zip file.
-2. Open https://app.netlify.com/drop in your browser. Drag the extracted
-   ferguson_strength_app folder onto the page and publish it. Netlify
-   provides a unique HTTPS web address. You may want to create a Netlify
-   account to retain control of your app address and updates.
-3. Open that web address on your iPhone in Safari.
-4. Use Safari's Share menu > Add to Home Screen > Add.
-   If offered, enable "Open as Web App."
-5. Tap the LiftLog icon on your iPhone to open the app. It will run in
-   its own window, and should work offline after the first load.
-
 IMPORTANT DATA NOTES
 - Workout entries stay in your browser / iPhone web-app storage.
 - No data is automatically synced between your phone and computer.
