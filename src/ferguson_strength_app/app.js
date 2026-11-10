@@ -16,7 +16,7 @@ const PRESET=[
   {id:'hoist-row',name:'Seated Row',brand:'Hoist',group:'Upper body',reps:12},
 ];
 const GROUPS=['Lower body','Upper body','Core'];
-const CARDIO_TYPES=[{id:'treadmill',name:'Treadmill'},{id:'elliptical',name:'Elliptical'},{id:'bike',name:'Bike'},{id:'rower',name:'Rower'}];
+const CARDIO_TYPES=[{id:'treadmill',name:'Treadmill'},{id:'elliptical',name:'Elliptical'},{id:'bike',name:'Bike'},{id:'rower',name:'Rower'},{id:'recumbent-stepper',name:'Recumbent Stepper'}];
 function defaults(){return {version:1,unit:'lb',machines:PRESET.map(m=>({...m})),logs:[],cardioLogs:[]};}
 function load(){try{const raw=localStorage.getItem(STORAGE_KEY);if(!raw)return defaults();const x=JSON.parse(raw);if(!Array.isArray(x.logs)||!Array.isArray(x.machines))return defaults();return {...defaults(),...x};}catch{return defaults();}}
 let db=load(), editMachineId=null, editDate=null;
