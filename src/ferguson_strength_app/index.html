@@ -38,7 +38,6 @@
         <div class="herohead"><div><div class="eyebrow" style="color:#a4ebca">Your workout</div><h2>Build strength.<br>Track progress.</h2><p>Tap a machine, log your sets, and pick up where you left off next time.</p></div><input id="workoutDate" class="datebox" type="date" aria-label="Workout date" /></div>
         <div class="statrow"><div class="stat"><b id="todayMachines">0<span style="opacity:.6">/12</span></b><small>machines logged</small></div><div class="stat"><b id="todaySets">0</b><small>working sets</small></div><div class="stat"><b id="todayVolume">0</b><small>lb × reps</small></div></div>
       </div>
-      <div class="notice mutednotice"><b>Workout note:</b> Your surgeon cleared unrestricted training after rotator cuff repair. Keep increases gradual and record shoulder symptoms when they occur.</div>
       <div id="machineGroups"></div>
     </section>
     <section id="progress" class="page" aria-label="Progress">
@@ -58,7 +57,6 @@
       <div class="settingblock"><div class="settingslabel">Your machines</div><div id="adminMachines"></div><button class="btn alt small mt10" id="addMachine">+ Add machine</button></div>
       <div class="settingblock"><div class="settingslabel">Back up or transfer workouts</div><p>All data stays on this device. Save a backup JSON file periodically—especially before changing phones or clearing Safari data. CSV works with Excel, Numbers, and other spreadsheets if you ever want it.</p><div class="row wrap"><button class="btn small" id="exportJson">Download backup</button><button class="btn alt small" id="exportCsv">Export CSV</button><label class="filelabel" for="importJson">Restore backup<input id="importJson" type="file" accept=".json,application/json"></label></div></div>
       <div class="settingblock"><div class="settingslabel">Add to your iPhone Home Screen</div><p>Once the app is opened from a secure website in Safari: tap the Share button, select <b>Add to Home Screen</b>, and tap <b>Add</b>. It can then open like an app and work offline after its first load.</p><div id="installNote" class="confirm" hidden>Home Screen installation detected.</div></div>
-      <div class="settingblock"><div class="settingslabel">About your baseline</div><p>TRT start date: October 22, 2026. Your workout tracker records performance, not muscle mass directly. Improvements can come from training practice, recovery, and other factors as well as testosterone treatment.</p></div>
       <div class="settingblock"><div class="settingslabel" style="color:#f9b0b3">Erase saved workout history</div><p>This is irreversible unless you have a downloaded backup.</p><button id="clearData" class="btn warn small">Erase workout entries</button></div>
       <p class="footer">LiftLog 1.0 · Private device storage · No account, analytics, or subscriptions</p>
     </section>
